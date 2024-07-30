@@ -1,6 +1,7 @@
 module MuseInference
 
-import AbstractDifferentiation as AD
+using ADTypes: ADTypes
+import DifferentiationInterface as DI
 using Base.Iterators: repeated
 using ComponentArrays
 using CovarianceEstimation

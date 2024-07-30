@@ -21,7 +21,7 @@ function DynPPL.maybe_invlink_before_eval!!(vi::DynPPL.SimpleVarInfo{NT,T,<:Part
 end
 
 
-struct TuringMuseProblem{A<:AD.AbstractBackend, M<:Turing.Model} <: AbstractMuseProblem
+struct TuringMuseProblem{A<:ADTypes.AbstractADType, M<:Turing.Model} <: AbstractMuseProblem
     
     autodiff :: A
     model :: M
@@ -51,8 +51,8 @@ as a list of symbols. All other non-conditioned and non-`params`
 variables will be considered the latent space.
 
 The `autodiff` parameter should be either
-`MuseInference.ForwardDiffBackend()` or
-`MuseInference.ZygoteBackend()`, specifying which library to use for
+`ADTypes.AutoForwardDiff()` or
+`ADTypes.AutoZygote()`, specifying which library to use for
 automatic differenation. The default uses whatever the global
 `Turing.ADBACKEND` is currently set to.
 
@@ -118,14 +118,14 @@ function TuringMuseProblem(
     # set backend based on Turing's by default
     if autodiff == nothing
         if Turing.ADBACKEND[] == :zygote
-            autodiff = AD.ZygoteBackend()
+            autodiff = ADTypes.AutoZygote()
         elseif Turing.ADBACKEND[] == :forwarddiff
-            autodiff = AD.ForwardDiffBackend()
+            autodiff = ADTypes.AutoForwardDiff()
         else
             error("Unsupposed backend from Turing: $(Turing.ADBACKEND)")
         end
     end
-    if (Threads.nthreads() > 1) && hasmethod(AD.ZygoteBackend,Tuple{}) && (autodiff isa typeof(AD.ZygoteBackend()))
+    if (Threads.nthreads() > 1) && (autodiff isa typeof(ADTypes.AutoZygote()))
         error("Turing doesn't support using the Zygote backend when Threads.nthreads()>1. Use a different backend or a single-thread.")
     end
 
@@ -202,7 +202,9 @@ function logPriorθ(prob::TuringMuseProblem, θ, θ_space)
 end
 
 function ∇θ_logLike(prob::TuringMuseProblem, x, z, θ, θ_space)
-    first(AD.gradient(prob.autodiff, θ -> logLike(prob, x, z, θ, θ_space), θ))
+    DI.gradient(prob.autodiff, θ) do θ
+        logLike(prob, x, z, θ, θ_space)
+    end
 end
 
 function ẑ_at_θ(prob::TuringMuseProblem, x, z₀, θ; ∇z_logLike_atol)

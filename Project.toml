@@ -1,13 +1,14 @@
 name = "MuseInference"
 uuid = "43b88160-90c7-4f71-933b-9d65205cd921"
 authors = ["Marius Millea <mariusmillea@gmail.com>"]
-version = "0.2.4"
+version = "0.3.0"
 
 [deps]
-AbstractDifferentiation = "c29ec348-61ec-40c8-8164-b8c60e9d9f3d"
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 CovarianceEstimation = "587fd27a-f159-11e8-2dae-1979310e6154"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
@@ -32,7 +33,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
-AbstractDifferentiation = "0.5"
 ComponentArrays = "0.12.3, 0.13, 0.14, 0.15"
 CovarianceEstimation = "0.2.7"
 Distributions = "0.25.36"

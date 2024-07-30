@@ -228,4 +228,3 @@ function check_self_consistency(
         @test ∇θ_logLike(prob, x, z, θ, UnTransformedθ()) ≈ J(θ)' * ∇θ_logLike(prob, x, z, transform_θ(prob, θ), Transformedθ()) .+ ∇θ_V(θ)  atol=atol
     end
 end
-
