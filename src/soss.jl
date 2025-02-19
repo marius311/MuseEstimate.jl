@@ -5,7 +5,7 @@ import .Soss.SimpleGraphs as SG
 
 export SossMuseProblem
 
-struct SossMuseProblem{A<:AD.AbstractBackend, M<:Soss.AbstractModel, MP<:Soss.AbstractModel} <: AbstractMuseProblem
+struct SossMuseProblem{A<:ADTypes.AbstractADType, M<:Soss.AbstractModel, MP<:Soss.AbstractModel} <: AbstractMuseProblem
     autodiff :: A
     model :: M
     model_for_prior :: MP
@@ -18,7 +18,7 @@ struct SossMuseProblem{A<:AD.AbstractBackend, M<:Soss.AbstractModel, MP<:Soss.Ab
 end
 
 @doc doc"""
-    SossMuseProblem(model; params, autodiff = ForwardDiffBackend())
+    SossMuseProblem(model; params, autodiff = AutoForwardDiff())
 
 Specify a MUSE problem with a
 [Soss](https://github.com/cscherrer/Soss.jl) model.
@@ -31,8 +31,8 @@ as a list of symbols. All other non-conditioned and non-`params`
 variables will be considered the latent space.
 
 The `autodiff` parameter should be either
-`MuseInference.ForwardDiffBackend()` or
-`MuseInference.ZygoteBackend()`, specifying which library to use for
+`ADTypes.AutoForwardDiff()` or
+`ADTypes.AutoZygote()`, specifying which library to use for
 automatic differenation.
 
 ## Example
@@ -64,7 +64,7 @@ result = muse(prob, (θ=0,))
 function SossMuseProblem(
     model::Soss.ConditionalModel; 
     params = leaf_params(model),
-    autodiff = ForwardDiffBackend()
+    autodiff = ADTypes.AutoForwardDiff()
 )
     x = model.obs
     !isempty(x) || error("Model must be conditioned on observed data.")
@@ -110,16 +110,20 @@ end
 
 function ∇θ_logLike(prob::SossMuseProblem, x, z::AbstractVector, θ::ComponentVector, ::UnTransformedθ)
     like = prob.model | (;x..., TV.transform(prob.xform_z, z)...)
-    first(AD.gradient(prob.autodiff, θ -> Soss.logdensityof(like, _namedtuple(θ)), θ))
+    DI.gradient(θ -> Soss.logdensityof(like, _namedtuple(θ)), prob.autodiff, θ)
 end
 function ∇θ_logLike(prob::SossMuseProblem, x, z::AbstractVector, θ::AbstractVector, ::Transformedθ)
     like = prob.model | (;x..., TV.transform(prob.xform_z, z)...)
-    first(AD.gradient(prob.autodiff, θ -> Soss.logdensityof(like, _namedtuple(inv_transform_θ(prob, θ))), θ))
+    DI.gradient(prob.autodiff, θ) do θ
+        Soss.logdensityof(like, _namedtuple(inv_transform_θ(prob, θ)))
+    end
 end
 
 
 function logLike_and_∇z_logLike(prob::SossMuseProblem, x, z, θ)
-    first.(AD.value_and_gradient(prob.autodiff, z -> Soss.logdensityof(prob.model | (;x..., _namedtuple(θ)...), TV.transform(prob.xform_z, z)), z))
+    DI.value_and_gradient(prob.autodiff, z) do z
+        Soss.logdensityof(prob.model | (;x..., _namedtuple(θ)...), TV.transform(prob.xform_z, z))
+    end
 end
 
 function sample_x_z(prob::SossMuseProblem, rng::AbstractRNG, θ)

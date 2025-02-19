@@ -12,7 +12,7 @@ struct SimpleMuseProblem{X,S,L,Gθ,Pθ,GZ,A} <: AbstractMuseProblem
 end
 
 @doc doc"""
-    SimpleMuseProblem(x, sample_x_z, logLike, logPriorθ=(θ->0); ad=AD.ForwardDiffBackend())
+    SimpleMuseProblem(x, sample_x_z, logLike, logPriorθ=(θ->0); ad=ADTypes.AutoForwardDiff())
 
 Specify a MUSE problem by providing the simulation and posterior
 evaluation code by-hand. The argument `x` should be the observed data.
@@ -44,8 +44,8 @@ end
 
 and should return the prior $\log\mathcal{P}(\theta)$ for your
 problem. The `autodiff` parameter should be either
-`MuseInference.ForwardDiffBackend()` or
-`MuseInference.ZygoteBackend()`, specifying which library to use for
+`ADTypes.AutoForwardDiff()` or
+`ADTypes.AutoZygote()`, specifying which library to use for
 automatic differenation through `logLike`.
 
 
@@ -69,20 +69,20 @@ prob = SimpleMuseProblem(
     function logPrior(θ)
         -θ^2/(2*3^2)
     end;
-    autodiff = MuseInference.ZygoteBackend()
+    autodiff = ADTypes.AutoZygote()
 )
 
 # get solution
 muse(prob, (θ=1,))
 ```
 """
-function SimpleMuseProblem(x, sample_x_z, logLike, logPriorθ=(θ->0); autodiff::AD.AbstractBackend=AD.ForwardDiffBackend())
+function SimpleMuseProblem(x, sample_x_z, logLike, logPriorθ=(θ->0); autodiff::ADTypes.AbstractADType=ADTypes.AutoForwardDiff())
     SimpleMuseProblem(
         x,
         sample_x_z,
         logLike,
-        (x,z,θ) -> first(AD.gradient(autodiff, θ -> logLike(x,z,θ), θ)),
-        (x,z,θ) -> first.(AD.value_and_gradient(autodiff, z -> logLike(x,z,θ), z)),
+        (x,z,θ) -> DI.gradient(θ -> logLike(x,z,θ), autodiff, θ),
+        (x,z,θ) -> DI.value_and_gradient(z -> logLike(x,z,θ), autodiff, z),
         logPriorθ,
         autodiff
     )

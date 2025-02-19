@@ -1,7 +1,7 @@
 
 using MuseInference, Soss, Turing, Distributions, Random, 
     Zygote, MeasureTheory, Test, StableRNGs, LinearAlgebra
-import AbstractDifferentiation as AD
+import ADTypes
 
 ##
 
@@ -18,8 +18,8 @@ rng = StableRNG(0)
         end
 
         @testset "$name" for (name,autodiff) in [
-            ("ForwardDiff", AD.ForwardDiffBackend()), 
-            ("Zygote", AD.ZygoteBackend())
+            ("ForwardDiff", ADTypes.AutoForwardDiff()), 
+            ("Zygote", ADTypes.AutoZygote())
         ]
 
             if !(name=="Zygote" && Threads.nthreads()>1)
@@ -45,8 +45,8 @@ rng = StableRNG(0)
         end
 
         @testset "$name" for (name,autodiff) in [
-            ("ForwardDiff", AD.ForwardDiffBackend()), 
-            ("Zygote", AD.ZygoteBackend())
+            ("ForwardDiff", ADTypes.AutoForwardDiff()), 
+            ("Zygote", ADTypes.AutoZygote())
         ]
 
             (;x) = Soss.predict(copy(rng), soss_funnel(3), θ=0)
@@ -70,8 +70,8 @@ rng = StableRNG(0)
         end
 
         @testset "$name" for (name,autodiff) in [
-            ("ForwardDiff", AD.ForwardDiffBackend()), 
-            # ("Zygote", AD.ZygoteBackend()) # broken
+            ("ForwardDiff", ADTypes.AutoForwardDiff()), 
+            # ("Zygote", ADTypes.AutoZygote()) # broken
         ]
 
             (;x) = Soss.predict(copy(rng), soss_funnel(3), θ=0)

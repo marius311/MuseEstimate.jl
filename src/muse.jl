@@ -181,7 +181,9 @@ function muse!(
             ẑs = getindex.(gẑs, :ẑ)
 
             g_like′ = g_like_dat′ .- mean(g_like_sims′)
-            g_prior′ = AD.gradient(AD.ForwardDiffBackend(), θ′ -> logPriorθ(prob, θ′, Transformedθ()), θ′)[1]
+            g_prior′ = DI.gradient(ADTypes.AutoForwardDiff(), θ′) do θ′
+                logPriorθ(prob, θ′, Transformedθ())
+            end
             g_post′ = g_like′ .+ g_prior′
 
             # Jacobian
@@ -204,7 +206,9 @@ function muse!(
                 end
             end
 
-            H_prior′ = AD.hessian(AD.ForwardDiffBackend(), θ′ -> logPriorθ(prob, θ′, Transformedθ()), θ′)[1]
+            H_prior′ = DI.hessian(ADTypes.AutoForwardDiff(), θ′) do θ′
+                logPriorθ(prob, θ′, Transformedθ())
+            end
             H⁻¹_post′ = inv(inv(H⁻¹_like′) + H_prior′)
 
             t = now() - t₀
@@ -288,8 +292,8 @@ Keyword arguments:
   differentiation, rather than finite differences. Will require 2nd
   order AD through your `logLike` so pay close attention to your
   `prob.autodiff`. Either
-  `AD.HigherOrderBackend((AD.ForwardDiffBackend(),
-  AD.ZygoteBackend()))` or `AD.ForwardDiffBackend()` are recommended
+  `DifferentiationInterface.SecondOrder(ADTypes.AutoForwardDiff(),
+  ADTypes.AutoZygote())` or `ADTypes.AutoForwardDiff()` are recommended
   (default: `false`)
 
 """
@@ -347,35 +351,40 @@ function get_H!(
                 end
                 T = eltype(z_start)
             
-                ad_fwd, ad_rev = AD.second_lowest(prob.autodiff), AD.lowest(prob.autodiff)
+                ad_fwd, ad_rev = if prob.autodiff isa DI.SecondOrder
+                    # assume forward-over-reverse is provided
+                    DI.outer(prob.autodiff), DI.inner(prob.autodiff)
+                else
+                    prob.autodiff, prob.autodiff
+                end
             
                 ## non-implicit-diff term
-                H1 = implicit_diff_H1_is_zero ? 𝟘 : copyto!(similar(𝟘), first(AD.jacobian(θ₀, backend=ad_fwd) do θ
+                H1 = implicit_diff_H1_is_zero ? 𝟘 : copyto!(similar(𝟘), DI.jacobian(ad_fwd, θ₀) do θ
                     local x, = sample_x_z(prob, copy(rng), θ)
-                    first(AD.gradient(θ₀, backend=ad_rev) do θ′ 
+                    DI.gradient(ad_rev, θ₀) do θ′ 
                         logLike(prob, x, ẑ, θ′, UnTransformedθ())
-                    end)
-                end))
+                    end
+                end)
             
                 ## term involving dzMAP/dθ via implicit-diff (w/ conjugate-gradient linear solve)
-                dFdθ = first(AD.jacobian(θ₀, backend=ad_fwd) do θ
-                    first(AD.gradient(ẑ, backend=ad_rev) do z
+                dFdθ = DI.jacobian(ad_fwd, θ₀) do θ
+                    DI.gradient(ad_rev, ẑ) do z
                         logLike(prob, x, z, θ, UnTransformedθ())
-                    end)
-                end)
-                dFdθ1 = first(AD.jacobian(θ₀, backend=ad_fwd) do θ
+                    end
+                end
+                dFdθ1 = DI.jacobian(ad_fwd, θ₀) do θ
                     local x, = sample_x_z(prob, copy(rng), θ)
-                    first(AD.gradient(ẑ, backend=ad_rev) do z
+                    DI.gradient(ad_rev, ẑ) do z
                         logLike(prob, x, z, θ₀, UnTransformedθ())
-                    end)
-                end)
+                    end
+                end
                 # A is the operation of the Hessian of logLike w.r.t. z
                 A = LinearMap{T}(length(z_start), isposdef=true, issymmetric=true, ishermitian=true) do w
-                    first(AD.jacobian(0, backend=ad_fwd) do α
-                        first(AD.gradient(ẑ + α * w, backend=ad_rev) do z
+                    DI.jacobian(ad_fwd, 0) do α
+                        DI.gradient(ad_rev, ẑ + α * w) do z
                             logLike(prob, x, z, θ₀, UnTransformedθ())
-                        end)
-                    end)
+                        end
+                    end
                 end
                 A⁻¹_dFdθ1 = pmap(pool_jac, eachcol(dFdθ1)) do w 
                     A⁻¹_w = cg(A, w; implicit_diff_cg_kwargs..., log=true)
@@ -533,10 +542,12 @@ end
 
 
 function finalize_result!(result::MuseResult, prob::AbstractMuseProblem)
-    @unpack H, J, θ = result
+    (; H, J, θ) = result
     if H != nothing && J != nothing && θ != nothing
         𝟘 = zero(J) # if θ::ComponentArray, helps keep component labels 
-        H_prior = -AD.hessian(AD.ForwardDiffBackend(), θ -> logPriorθ(prob, θ, UnTransformedθ()), result.θ)[1]
+        H_prior = -DI.hessian(ADTypes.AutoForwardDiff(), result.θ) do θ
+            logPriorθ(prob, θ, UnTransformedθ())
+        end
         result.Σ⁻¹ = H' * inv(J) * H + H_prior + 𝟘
         result.Σ = inv(result.Σ⁻¹) + 𝟘
         if length(result.θ) == 1

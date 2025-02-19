@@ -1,6 +1,7 @@
 module MuseInference
 
-import AbstractDifferentiation as AD
+using ADTypes: ADTypes
+import DifferentiationInterface as DI
 using Base.Iterators: repeated
 using ComponentArrays
 using CovarianceEstimation
@@ -25,7 +26,6 @@ using Setfield
 using Statistics
 using Test
 using TOML
-using UnPack
 
 export SimpleMuseProblem, MuseResult, muse, muse!, get_J!, get_H!
 

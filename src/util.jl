@@ -65,11 +65,6 @@ function Random.randn!(rng::AbstractRNG, A::Array{<:ForwardDiff.Dual})
     A .= randn!(rng, ForwardDiff.value.(A))
 end
 
-# type-piracy bc these make code much clearer to read. could be removed if
-# https://github.com/JuliaDiff/AbstractDifferentiation.jl/pull/62 is merged
-AD.gradient(f, args...; backend::AD.AbstractBackend) = AD.gradient(backend, f, args...)
-AD.jacobian(f, args...; backend::AD.AbstractBackend) = AD.jacobian(backend, f, args...)
-
 # worker pool which just falls back to map
 struct LocalWorkerPool <: AbstractWorkerPool end
 Distributed.pmap(f, ::LocalWorkerPool, args...) = map(f, args...)

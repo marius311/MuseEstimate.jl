@@ -33,7 +33,7 @@ First, load up the packages we'll need:
 
 ```@example 1
 using MuseInference, Turing
-using AbstractDifferentiation, Dates, LinearAlgebra, Printf, Plots, Random, Zygote
+using ADTypes, Dates, LinearAlgebra, Printf, Plots, Random, Zygote
 Turing.setadbackend(:zygote)
 using Logging # hide
 Logging.disable_logging(Logging.Info) # hide
@@ -164,7 +164,7 @@ prob = SimpleMuseProblem(
     function logPrior(θ)
         -θ^2/(2*3^2)
     end;
-    autodiff = AbstractDifferentiation.ZygoteBackend()
+    autodiff = ADTypes.AutoZygote()
 )
 nothing # hide
 ```
