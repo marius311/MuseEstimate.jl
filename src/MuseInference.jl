@@ -26,7 +26,6 @@ using Setfield
 using Statistics
 using Test
 using TOML
-using UnPack
 
 export SimpleMuseProblem, MuseResult, muse, muse!, get_J!, get_H!
 

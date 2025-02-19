@@ -12,19 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        julia-version: ['1.7', '1.8', '1.9', '1.10']
+        julia-version: ['1.10', '1']
         threads: ['1', '2']
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # if authenticating with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # if authenticating with SSH deploy key
-          BUILD_DOCS: ${{ matrix.julia-version == '1.7' && matrix.threads == '1'}} # only build/deploy docs from one version
+          BUILD_DOCS: ${{ matrix.julia-version == '1' && matrix.threads == '1'}} # only build/deploy docs from one version
           JULIA_NUM_THREADS: ${{ matrix.threads }}
         timeout-minutes: 30

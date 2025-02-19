@@ -542,7 +542,7 @@ end
 
 
 function finalize_result!(result::MuseResult, prob::AbstractMuseProblem)
-    @unpack H, J, θ = result
+    (; H, J, θ) = result
     if H != nothing && J != nothing && θ != nothing
         𝟘 = zero(J) # if θ::ComponentArray, helps keep component labels 
         H_prior = -DI.hessian(ADTypes.AutoForwardDiff(), result.θ) do θ
